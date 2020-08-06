@@ -1,7 +1,7 @@
 [![Build/test](https://github.com/brndnmtthws/citrine/workflows/Build/test/badge.svg?branch=master)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3ABuild%2Ftest+branch%3Amaster) [![Publish](https://github.com/brndnmtthws/citrine/workflows/Publish/badge.svg)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3APublish+) [![Hex pm](http://img.shields.io/hexpm/v/citrine.svg?style=flat)](https://hex.pm/packages/citrine)
 # Citrine
 
-_Citrine energizes every level of life. It cleanses the chakras and opens the intuition. It's one of the most powerful energy crystals in the world._
+_💎 Citrine energizes every level of life. It cleanses the chakras and opens the intuition. It's one of the most powerful energy crystals in the world. 💎_
 
 Citrine is a library for running scheduled jobs on an Erlang cluster, similar
 to cron. Citrine was created to satisfy a few simple requirements:
