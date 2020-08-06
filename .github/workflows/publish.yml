@@ -24,6 +24,7 @@ jobs:
         with:
           otp-version: 23.0
           elixir-version: 1.10.4
+      - run: mix deps.get
       - run: mix hex.publish --yes
         env:
           HEX_API_KEY: ${{secrets.HEX_API_KEY}}
