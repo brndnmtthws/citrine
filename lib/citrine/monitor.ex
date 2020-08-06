@@ -18,12 +18,13 @@ defmodule Citrine.Monitor do
     Logger.debug("orphaned citrine jobs on node=#{inspect(node)}: #{inspect(jobs)}")
 
     # Use consistent hash to decide which node to reassign jobs to
-    nodes =
+    alive_nodes =
       [Node.self() | Node.list()]
       |> Enum.reject(fn n -> n == node end)
+      |> Enum.filter(&(Node.ping(&1) == :pong))
       |> Enum.sort()
 
-    node_count = Enum.count(nodes)
+    node_count = Enum.count(alive_nodes)
 
     for job <- jobs do
       Citrine.Registry.unregister_name(registry_name, job.id)
@@ -31,7 +32,7 @@ defmodule Citrine.Monitor do
       integer = :binary.decode_unsigned(digest)
       idx = rem(integer, node_count)
 
-      if Enum.at(nodes, idx) == Node.self() do
+      if Enum.at(alive_nodes, idx) == Node.self() do
         Logger.debug(
           "restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(Node.self())}"
         )
