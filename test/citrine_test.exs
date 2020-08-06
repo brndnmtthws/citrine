@@ -1,5 +1,5 @@
 defmodule Citrine.JobTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   require Logger
 
   defmodule Scheduler1 do
@@ -173,8 +173,8 @@ defmodule Citrine.JobTest do
 
     @tag :shutdown
     test "after shutdown", %{tmp_path: tmp_path, job_task: job_task} do
-      [node1, node2, node3, node4, node5, node6] =
-        nodes = LocalCluster.start_nodes("citrine-test-shutdown", 6, files: [__ENV__.file])
+      [node1, node2, node3, node4, node5] =
+        nodes = LocalCluster.start_nodes("citrine-test-shutdown", 5, files: [__ENV__.file])
 
       IO.inspect(nodes, label: "Test nodes that are now online")
 
@@ -184,7 +184,6 @@ defmodule Citrine.JobTest do
       assert Node.ping(node3) == :pong
       assert Node.ping(node4) == :pong
       assert Node.ping(node5) == :pong
-      assert Node.ping(node6) == :pong
 
       for node <- nodes do
         {:ok, _} = :rpc.block_call(node, Scheduler2, :start_link, [])
@@ -262,7 +261,7 @@ defmodule Citrine.JobTest do
       count = read_tmp(tmp_path)
       assert count == 6
 
-      :ok = LocalCluster.stop_nodes([node5, node6])
+      :ok = LocalCluster.stop_nodes([node4, node5])
 
       # Two more runs
       sleep_until_next_window(job1.schedule)

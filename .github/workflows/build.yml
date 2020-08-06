@@ -15,6 +15,5 @@ jobs:
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
-      - run: epmd -daemon
       - run: mix deps.get
       - run: mix test

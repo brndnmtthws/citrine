@@ -10,7 +10,6 @@ jobs:
         with:
           otp-version: 23.0
           elixir-version: 1.10.4
-      - run: epmd -daemon
       - run: mix deps.get
       - run: mix test
       - run: mix hex.publish --strict
