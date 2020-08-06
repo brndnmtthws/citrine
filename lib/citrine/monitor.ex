@@ -32,17 +32,14 @@ defmodule Citrine.Monitor do
       integer = :binary.decode_unsigned(digest)
       idx = rem(integer, node_count)
 
-      if Enum.at(alive_nodes, idx) == Node.self() do
-        Logger.debug(
-          "restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(Node.self())}"
-        )
+      node = Enum.at(alive_nodes, idx)
 
-        # Restart job on *this* node
-        Citrine.Supervisor.start_child(
-          supervisor_name,
-          {Citrine.JobExecutor, {registry_name, job}}
-        )
-      end
+      Logger.debug("restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(node)}")
+
+      :rpc.call(node, Citrine.Supervisor, :start_child, [
+        supervisor_name,
+        {Citrine.JobExecutor, {registry_name, job}}
+      ])
     end
   end
 
