@@ -82,7 +82,7 @@ defmodule Citrine.Registry do
   def register_job(registry_name, job = %Citrine.Job{}) do
     Logger.debug("registering job #{inspect(job)}")
 
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            case :mnesia.wread({registry_name, job.id}) do
              [{_table, _id, %Citrine.Job{} = _job, pid, node}] ->
                # Record already exists in table, keep existing pid/node
@@ -100,7 +100,7 @@ defmodule Citrine.Registry do
   def unregister_job(registry_name, job_id) do
     Logger.debug("unregistering job_id=#{job_id}")
 
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            :mnesia.delete({registry_name, job_id})
          end) do
       {:atomic, :ok} ->
@@ -112,7 +112,7 @@ defmodule Citrine.Registry do
   end
 
   def lookup_job(registry_name, job_id) do
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            :mnesia.read({registry_name, job_id})
          end) do
       {:atomic, [{_table, _id, %Citrine.Job{} = job, _pid, _node}]} ->
@@ -124,7 +124,7 @@ defmodule Citrine.Registry do
   end
 
   def list_jobs(registry_name) do
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            :mnesia.foldl(
              fn {_registry_name, _id, job, pid, _node}, jobs ->
                jobs ++ [{pid, job}]
@@ -140,9 +140,9 @@ defmodule Citrine.Registry do
 
   @spec register_name({atom, atom}, any) :: :no | :yes
   def register_name({registry_name, job_id}, pid) do
-    Logger.debug("registering name job_id=#{inspect(job_id)} pid=#{inspect(pid)}")
+    Logger.debug("registering name job_id=#{inspect(job_id)} with pid=#{inspect(pid)}")
 
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            case :mnesia.wread({registry_name, job_id}) do
              [{_table, _id, %Citrine.Job{} = job, nil, nil}] ->
                :mnesia.write({registry_name, job_id, job, pid, node(pid)})
@@ -161,7 +161,7 @@ defmodule Citrine.Registry do
 
   @spec whereis_name({atom(), Citrine.Job.jobid()}) :: pid() | :undefined
   def whereis_name({registry_name, job_id}) do
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            :mnesia.read({registry_name, job_id})
          end) do
       {:atomic, [{_table, _id, %Citrine.Job{} = _job, pid, _node}]} ->
@@ -178,9 +178,9 @@ defmodule Citrine.Registry do
   def unregister_name(registry_name, job_id), do: unregister_name({registry_name, job_id})
 
   def unregister_name({registry_name, job_id}) do
-    Logger.debug("unregistering #{job_id}")
+    Logger.debug("unregistering name #{job_id}")
 
-    :mnesia.transaction(fn ->
+    :mnesia.sync_transaction(fn ->
       case :mnesia.wread({registry_name, job_id}) do
         [{_table, _id, %Citrine.Job{} = job, _pid, _node}] ->
           :mnesia.write({registry_name, job_id, job, nil, nil})
@@ -191,7 +191,7 @@ defmodule Citrine.Registry do
   end
 
   def get_jobs_by_node(registry_name, node) do
-    case :mnesia.transaction(fn ->
+    case :mnesia.sync_transaction(fn ->
            :mnesia.index_read(registry_name, node, :node)
          end) do
       {:atomic, records} ->

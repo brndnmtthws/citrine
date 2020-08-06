@@ -13,30 +13,37 @@ defmodule Citrine.Monitor do
   end
 
   defp reassign(registry_name, supervisor_name, node) do
-    # reassign jobs that were on dead nodes
+    # reassign any jobs that were on the dead node
     jobs = Citrine.Registry.get_jobs_by_node(registry_name, node)
+
+    for job <- jobs do
+      # unregister these jobs so they can be reassigned
+      Citrine.Registry.unregister_name(registry_name, job.id)
+    end
+
     Logger.debug("orphaned citrine jobs on node=#{inspect(node)}: #{inspect(jobs)}")
 
-    # Use consistent hash to decide which node to reassign jobs to
+    # get a list of nodes that are probably alive
     alive_nodes =
-      [Node.self() | Node.list()]
-      |> Enum.reject(fn n -> n == node end)
+      Node.list()
+      |> Enum.reject(&(&1 == node))
       |> Enum.filter(&(Node.ping(&1) == :pong))
+      |> Enum.concat([Node.self()])
       |> Enum.sort()
 
     node_count = Enum.count(alive_nodes)
 
     for job <- jobs do
-      Citrine.Registry.unregister_name(registry_name, job.id)
+      # Use consistent hash to decide which node to reassign jobs to
       digest = :crypto.hash(:sha256, "#{job.id}")
       integer = :binary.decode_unsigned(digest)
       idx = rem(integer, node_count)
 
-      node = Enum.at(alive_nodes, idx)
+      new_node = Enum.at(alive_nodes, idx)
 
       Logger.debug("restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(node)}")
 
-      :rpc.call(node, Citrine.Supervisor, :start_child, [
+      :rpc.call(new_node, Citrine.Supervisor, :start_child, [
         supervisor_name,
         {Citrine.JobExecutor, {registry_name, job}}
       ])
