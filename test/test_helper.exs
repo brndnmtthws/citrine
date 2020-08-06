@@ -1,5 +1,5 @@
 # Start epmd
-:os.cmd('epmd -daemon')
+{_response, 0} = System.cmd("epmd", ["-daemon"])
 
 # start the current node as a manager
 :ok = LocalCluster.start()
