@@ -1,3 +1,4 @@
+name: mix build
 on: push
 
 jobs:
