@@ -29,7 +29,79 @@ defmodule Citrine.Registry do
     :mnesia.add_table_index(name, :node)
   end
 
+  @impl true
+  def handle_info(
+        {:mnesia_system_event, {:inconsistent_database, _context, node}},
+        %{name: name} = state
+      ) do
+    :global.trans({name, self()}, fn -> heal(name, node) end)
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:mnesia_system_event, _event}, state) do
+    {:noreply, state}
+  end
+
+  # Logic partly borrowed from https://github.com/danschultzer/pow/blob/master/lib/pow/store/backend/mnesia_cache/unsplit.ex
+  defp heal(name, node) do
+    case :mnesia.system_info(:running_db_nodes) |> Enum.member?(node) do
+      true ->
+        :ok
+
+      false ->
+        force_reload(name, node)
+    end
+  end
+
+  defp force_reload(name, node) do
+    [master_nodes, nodes] = sorted_cluster_islands(name, node)
+
+    for node <- nodes do
+      :stopped = :rpc.call(node, :mnesia, :stop, [])
+
+      :ok = :rpc.call(node, :mnesia, :set_master_nodes, [name, master_nodes])
+
+      :ok = :rpc.block_call(node, :mnesia, :start, [])
+      :ok = :rpc.call(node, :mnesia, :wait_for_tables, [[name], :timer.seconds(15)])
+
+      Logger.debug(
+        "[#{inspect(__MODULE__)}] #{inspect(node)} has been healed and joined #{
+          inspect(master_nodes)
+        }"
+      )
+    end
+
+    :ok
+  end
+
+  defp sorted_cluster_islands(name, node) do
+    island_a = :mnesia.system_info(:running_db_nodes)
+    island_b = :rpc.call(node, :mnesia, :system_info, [:running_db_nodes])
+
+    Enum.sort([island_a, island_b], &older?(name, &1, &2))
+  end
+
+  defp get_all_nodes_for_table(name) do
+    [:ram_copies, :disc_copies, :disc_only_copies]
+    |> Enum.map(&:mnesia.table_info(name, &1))
+    |> Enum.concat()
+  end
+
+  defp older?(name, island_a, island_b) do
+    all_nodes = get_all_nodes_for_table(name)
+    island_nodes = Enum.concat(island_a, island_b)
+
+    oldest_node = all_nodes |> Enum.reverse() |> Enum.find(&Enum.member?(island_nodes, &1))
+
+    Enum.member?(island_a, oldest_node)
+  end
+
   defp init_mnesia(name) do
+    # Wait up to 1000 millis before trying to initialize to prevent every node initializing simultaneously
+    Process.sleep(:rand.uniform(1000))
+
     db_nodes =
       Node.list()
       |> Enum.filter(&(:rpc.block_call(&1, :mnesia, :system_info, [:is_running]) == :yes))
@@ -74,24 +146,82 @@ defmodule Citrine.Registry do
       create_tables(name)
     end
 
-    # Wait up to 10s for tables
-    :ok = :mnesia.wait_for_tables([name], 60_000)
+    :mnesia.subscribe({:table, name, :detailed})
+    :mnesia.subscribe(:system)
 
-    :ok
+    # Wait up to 10s for tables
+    :mnesia.wait_for_tables([name], 60_000)
+  end
+
+  @impl true
+  def handle_info(
+        {:mnesia_table_event, {:delete, _name, _new_job, old_jobs, _activity_id}},
+        state
+      ) do
+    this_node = Node.self()
+
+    Logger.debug(":delete event on node=#{inspect(this_node)} old_jobs=#{inspect(old_jobs)}")
+
+    case old_jobs do
+      [{_name, _job_id, %Citrine.Job{} = _job, pid, ^this_node}] ->
+        if Process.alive?(pid) do
+          Logger.debug("terminating pid=#{inspect(pid)}")
+          Process.send(pid, :terminate, [])
+        end
+
+      _ ->
+        nil
+    end
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:mnesia_table_event, {:write, _name, new_job, old_jobs, _activity_id}}, state) do
+    this_node = Node.self()
+
+    Logger.debug(
+      ":write event on node=#{inspect(this_node)} new_job=#{inspect(new_job)} old_jobs=#{
+        inspect(old_jobs)
+      }"
+    )
+
+    case old_jobs do
+      [{_name, _job_id, %Citrine.Job{} = _job, old_pid, ^this_node}] ->
+        case new_job do
+          {_name, _job_id, %Citrine.Job{} = _job, new_pid, _new_node} ->
+            if old_pid != new_pid and Process.alive?(old_pid) do
+              Logger.debug("terminating old_pid=#{inspect(old_pid)}")
+              Process.send(old_pid, :terminate, [])
+            end
+
+          _ ->
+            nil
+        end
+
+      _ ->
+        nil
+    end
+
+    {:noreply, state}
   end
 
   def register_job(registry_name, job = %Citrine.Job{}) do
     Logger.debug("registering job #{inspect(job)}")
 
     case :mnesia.sync_transaction(fn ->
-           case :mnesia.wread({registry_name, job.id}) do
-             [{_table, _id, %Citrine.Job{} = _job, pid, node}] ->
-               # Record already exists in table, keep existing pid/node
-               :mnesia.write({registry_name, job.id, job, pid, node})
+           record =
+             case :mnesia.wread({registry_name, job.id}) do
+               [{_table, _id, %Citrine.Job{} = _job, pid, node}] ->
+                 # Record already exists in table, keep existing pid/node
+                 {registry_name, job.id, job, pid, node}
 
-             _ ->
-               :mnesia.write({registry_name, job.id, job, nil, nil})
-           end
+               _ ->
+                 {registry_name, job.id, job, nil, nil}
+             end
+
+           Logger.debug("register_job writing record=#{inspect(record)}")
+           :mnesia.write(record)
          end) do
       {:atomic, :ok} -> :ok
       _ -> :error
@@ -146,7 +276,9 @@ defmodule Citrine.Registry do
     case :mnesia.sync_transaction(fn ->
            case :mnesia.wread({registry_name, job_id}) do
              [{_table, _id, %Citrine.Job{} = job, nil, nil}] ->
-               :mnesia.write({registry_name, job_id, job, pid, node(pid)})
+               record = {registry_name, job_id, job, pid, node(pid)}
+               Logger.debug("register_name writing record=#{inspect(record)}")
+               :mnesia.write(record)
                :yes
 
              _ ->
@@ -184,7 +316,12 @@ defmodule Citrine.Registry do
     :mnesia.sync_transaction(fn ->
       case :mnesia.wread({registry_name, job_id}) do
         [{_table, _id, %Citrine.Job{} = job, _pid, _node}] ->
-          :mnesia.write({registry_name, job_id, job, nil, nil})
+          record = {registry_name, job_id, job, nil, nil}
+          Logger.debug("unregister_name writing record=#{inspect(record)}")
+          :mnesia.write(record)
+
+        _ ->
+          nil
       end
     end)
 

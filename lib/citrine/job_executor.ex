@@ -47,7 +47,10 @@ defmodule Citrine.JobExecutor do
   @impl true
   def init(init_arg) do
     {registry, %Job{} = job} = init_arg
-    Logger.debug(fn -> "initializing citrine job, id=#{job.id} node=#{Node.self()}" end)
+
+    Logger.debug(fn ->
+      "initializing citrine job, id=#{job.id} pid=#{inspect(self())} node=#{Node.self()}"
+    end)
 
     Process.flag(:trap_exit, true)
 
@@ -71,7 +74,7 @@ defmodule Citrine.JobExecutor do
       # Allow for up to 60 seconds to shut down
       shutdown: 60_000,
       # Restart always
-      restart: :permanent,
+      restart: :transient,
       type: :worker
     }
   end
@@ -123,6 +126,11 @@ defmodule Citrine.JobExecutor do
     timer = schedule_iteration(cron_expr)
 
     {:noreply, Map.put(state, :timer, timer)}
+  end
+
+  @impl true
+  def handle_info({:terminate}, state) do
+    {:stop, :normal, state}
   end
 
   @impl true

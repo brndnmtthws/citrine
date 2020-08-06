@@ -41,7 +41,7 @@ defmodule Citrine.Monitor do
 
       new_node = Enum.at(alive_nodes, idx)
 
-      Logger.debug("restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(node)}")
+      Logger.debug("restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(new_node)}")
 
       :rpc.call(new_node, Citrine.Supervisor, :start_child, [
         supervisor_name,
