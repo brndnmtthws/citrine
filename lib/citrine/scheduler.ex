@@ -11,8 +11,8 @@ defmodule Citrine.Scheduler do
 
   Define a scheduler based on `Citrine.Scheduler`:
 
-      defmodule Blogmail.Scheduler do
-        use Citrine.Scheduler, otp_app: :blogmail
+      defmodule MyApp.Scheduler do
+        use Citrine.Scheduler, otp_app: :myapp
         def initialize_jobs() do
           # Initialize your jobs here
           put_job(%Citrine.Job{
