@@ -24,3 +24,6 @@ citrine-*.tar
 
 # Ignore Elixir compiler files.
 .elixir_ls
+
+# Let dependency versions float
+mix.lock
