@@ -4,7 +4,7 @@ defmodule Citrine.MixProject do
   def project do
     [
       app: :citrine,
-      version: "0.1.9",
+      version: "0.1.10",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
