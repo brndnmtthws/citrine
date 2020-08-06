@@ -1,5 +1,4 @@
-[![Build/test](https://github.com/brndnmtthws/citrine/workflows/Build/test/badge.svg?branch=master)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3ABuild%2Ftest+branch%3Amaster) [![Publish](https://github.com/brndnmtthws/citrine/workflows/Publish/badge.svg)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3APublish+) [![Hex pm](http://img.shields.io/hexpm/v/citrine.svg?style=flat)](https://hex.pm/packages/citrine)
-# Citrine
+# [Citrine](http://hexdocs.pm/citrine/) [![Build/test](https://github.com/brndnmtthws/citrine/workflows/Build/test/badge.svg?branch=master)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3ABuild%2Ftest+branch%3Amaster) [![Publish](https://github.com/brndnmtthws/citrine/workflows/Publish/badge.svg)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3APublish+) [![Hex pm](http://img.shields.io/hexpm/v/citrine.svg?style=flat)](https://hex.pm/packages/citrine)
 
 _💎 Citrine energizes every level of life. It cleanses the chakras and opens the intuition. It's one of the most powerful energy crystals in the world. 💎_
 
@@ -24,9 +23,9 @@ If you're using mnesia elsewhere in your application, you should be aware that C
 
 Citrine is not a perfect solution for all scheduling needs. There are certain features Citrine does not implement, or even try to implement, and if you require these features you should either look elsewhere or consider different patterns.
 
-* **Best effort**: There are some scenarios in which Citrine *could* potentially miss execution of a job, such as during a rolling cluster update. Citrine will always try its best to execute jobs according to a schedule, but in some cases it may not.
-* **Exactly once semantics**: Citrine does not attempt to guarantee a job runs exactly once according to a schedule, it prefers to run jobs multiple times in failure scenarios such as a netsplit.
-* **Interruption handling**: In the event a job is interrupted during execution, Citrine makes no attempt to restart or re-run the job.
+* **Best effort**: There are some scenarios in which Citrine *could* potentially miss execution of a job, such as while rolling an update. Citrine will always try its best to execute jobs according to their schedules, but in some cases it may not.
+* **Exactly once semantics**: Citrine does not attempt to guarantee a job runs exactly once according to its schedule, it prefers to run a job multiple times in the event of failure scenarios such as netsplits.
+* **Interruption handling**: In the event a job is interrupted during execution, or the job itself fails, Citrine makes no attempt to restart or re-run the job.
 * **Idempotency**: This is not so much a limitation but rather a warning: your jobs should be designed to be idempotent to prevent strange side effects. Citrine cannot provide any guarantees.
 * **Clustering**: Citrine assumes you've already specified the cluster topology, either manually or using a library such as [libcluster](https://hexdocs.pm/libcluster/readme.html).
 
@@ -34,8 +33,8 @@ If you need stronger guarantees of execution, it's recommended that you
 use a combination of a stateful queueing service with a worker library, such
 as [Exq](https://github.com/akira/exq).
 
-If you're okay with the limitations of the library, Citrine
-is a great choice due to minimal dependencies and operational burden.
+If you're okay with the limitations of the library, Citrine is a great choice
+thanks to its simple interface, minimal dependencies and ease of operations.
 
 ## Installation
 
@@ -52,7 +51,7 @@ end
 
 ## Usage
 
-Start by creating a module for the core scheduler:
+Create a module for the core scheduler:
 
 ```elixir
 defmodule MyApp.Scheduler do
@@ -67,7 +66,7 @@ defmodule MyApp.Application do
   use Application
   def start(_type, _args) do
     children = [
-      # Start the Citrine scheduler
+      # Start your Citrine scheduler
       MyApp.Scheduler
     ]
     opts = [strategy: :one_for_one, name: MyApp.Supervisor]
@@ -76,12 +75,12 @@ defmodule MyApp.Application do
 end
 ```
 
-Using the scheduler:
+Use the scheduler to start and stop a job:
 
 ```elixir
 # Create a job
 job = %Citrine.Job{
-  id: :my_job_id,
+  id: "my_job_id",
   schedule: "* * * * * *", # Run every second
   task: job_task,
   extended_syntax: true # Use extended cron syntax
