@@ -33,6 +33,7 @@ defmodule Citrine.Registry do
     db_nodes =
       Node.list()
       |> Enum.filter(&(:rpc.block_call(&1, :mnesia, :system_info, [:is_running]) == :yes))
+      |> Enum.sort()
 
     unless Enum.empty?(db_nodes) do
       case :mnesia.system_info(:running_db_nodes) do
