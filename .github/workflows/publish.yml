@@ -13,6 +13,7 @@ jobs:
       - run: mix deps.get
       - run: mix test
   publish:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
