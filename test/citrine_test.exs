@@ -17,9 +17,9 @@ defmodule Citrine.JobTest do
     Crontab.Scheduler.get_next_run_date!(Crontab.CronExpression.Parser.parse!(schedule, true))
     |> DateTime.from_naive!("Etc/UTC")
     |> DateTime.diff(DateTime.utc_now(), :millisecond)
-    # Add 200 millis to allow jobs to complete, it can take time for everything
+    # Add 250 millis to allow jobs to complete, it can take time for everything
     # to synchronize
-    |> add(200)
+    |> add(250)
     # Don't allow any less than 5 millis
     |> max(5)
     |> Process.sleep()
