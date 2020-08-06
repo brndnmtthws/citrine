@@ -129,7 +129,7 @@ defmodule Citrine.JobExecutor do
   end
 
   @impl true
-  def handle_info({:terminate}, state) do
+  def handle_info(:terminate, state) do
     {:stop, :normal, state}
   end
 

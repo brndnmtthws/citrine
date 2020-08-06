@@ -29,21 +29,6 @@ defmodule Citrine.Registry do
     :mnesia.add_table_index(name, :node)
   end
 
-  @impl true
-  def handle_info(
-        {:mnesia_system_event, {:inconsistent_database, _context, node}},
-        %{name: name} = state
-      ) do
-    :global.trans({name, self()}, fn -> heal(name, node) end)
-
-    {:noreply, state}
-  end
-
-  @impl true
-  def handle_info({:mnesia_system_event, _event}, state) do
-    {:noreply, state}
-  end
-
   # Logic partly borrowed from https://github.com/danschultzer/pow/blob/master/lib/pow/store/backend/mnesia_cache/unsplit.ex
   defp heal(name, node) do
     case :mnesia.system_info(:running_db_nodes) |> Enum.member?(node) do
@@ -155,6 +140,16 @@ defmodule Citrine.Registry do
 
   @impl true
   def handle_info(
+        {:mnesia_system_event, {:inconsistent_database, _context, node}},
+        %{name: name} = state
+      ) do
+    :global.trans({name, self()}, fn -> heal(name, node) end)
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(
         {:mnesia_table_event, {:delete, _name, _new_job, old_jobs, _activity_id}},
         state
       ) do
@@ -203,6 +198,11 @@ defmodule Citrine.Registry do
         nil
     end
 
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:mnesia_system_event, _event}, state) do
     {:noreply, state}
   end
 
