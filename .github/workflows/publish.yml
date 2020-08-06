@@ -12,4 +12,14 @@ jobs:
           elixir-version: 1.10.4
       - run: mix deps.get
       - run: mix test
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-elixir@v1
+        with:
+          otp-version: 23.0
+          elixir-version: 1.10.4
       - run: mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{secrets.HEX_API_KEY}}
