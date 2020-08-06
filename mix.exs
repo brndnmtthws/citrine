@@ -42,7 +42,7 @@ defmodule Citrine.MixProject do
   end
 
   defp description() do
-    " Elixir library for runnin cron-based scheduled jobs on your Erlang cluster."
+    "Elixir library for running cron-based scheduled jobs on your Erlang cluster."
   end
 
   defp package() do
