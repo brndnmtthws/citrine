@@ -1,4 +1,4 @@
-[![Hex pm](http://img.shields.io/hexpm/v/citrine.svg?style=flat)](https://hex.pm/packages/citrine)
+[![Elixir CI](https://github.com/brndnmtthws/citrine/workflows/Elixir%20CI/badge.svg?branch=master)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3A%22Elixir+CI%22+branch%3Amaster) [![Hex pm](http://img.shields.io/hexpm/v/citrine.svg?style=flat)](https://hex.pm/packages/citrine)
 
 # Citrine
 
