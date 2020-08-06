@@ -12,4 +12,4 @@ jobs:
           elixir-version: 1.10.4
       - run: mix deps.get
       - run: mix test
-      - run: mix hex.publish --strict
+      - run: mix hex.publish --yes
