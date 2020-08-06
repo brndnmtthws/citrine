@@ -1,5 +1,4 @@
 [![Elixir CI](https://github.com/brndnmtthws/citrine/workflows/Elixir%20CI/badge.svg?branch=master)](https://github.com/brndnmtthws/citrine/actions?query=workflow%3A%22Elixir+CI%22+branch%3Amaster) [![Hex pm](http://img.shields.io/hexpm/v/citrine.svg?style=flat)](https://hex.pm/packages/citrine)
-
 # Citrine
 
 _Citrine energizes every level of life. It cleanses the chakras and opens the intuition. It's one of the most powerful energy crystals in the world._

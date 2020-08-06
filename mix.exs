@@ -8,6 +8,8 @@ defmodule Citrine.MixProject do
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      description: description(),
+      package: package(),
 
       # Docs
       name: "Citrine",
@@ -36,6 +38,18 @@ defmodule Citrine.MixProject do
       {:local_cluster, "~> 1.1", only: [:test]},
       {:temp, "~> 0.4", only: [:test]},
       {:ex_doc, "~> 0.22", only: :dev, runtime: false}
+    ]
+  end
+
+  defp description() do
+    " Elixir library for runnin cron-based scheduled jobs on your Erlang cluster."
+  end
+
+  defp package() do
+    [
+      name: "citrine",
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/brndnmtthws/citrine"}
     ]
   end
 end
