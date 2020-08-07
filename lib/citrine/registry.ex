@@ -89,55 +89,58 @@ defmodule Citrine.Registry do
     # Wait up to 500 millis before trying to initialize to prevent every node initializing simultaneously
     Process.sleep(:rand.uniform(500))
 
-    db_nodes =
-      Node.list()
-      |> Enum.filter(&(:rpc.block_call(&1, :mnesia, :system_info, [:is_running]) == :yes))
-      |> Enum.sort()
+    # Only allow initializing one instance at a time
+    :global.trans({name, self()}, fn ->
+      db_nodes =
+        Node.list()
+        |> Enum.filter(&(:rpc.block_call(&1, :mnesia, :system_info, [:is_running]) == :yes))
+        |> Enum.sort()
 
-    unless Enum.empty?(db_nodes) do
-      case :mnesia.system_info(:running_db_nodes) do
-        [] ->
-          :ok
+      unless Enum.empty?(db_nodes) do
+        case :mnesia.system_info(:running_db_nodes) do
+          [] ->
+            :ok
 
-        _nodes ->
-          # Stop mnesia
-          :mnesia.stop()
+          _nodes ->
+            # Stop mnesia
+            :mnesia.stop()
 
-          # Delete any local schema
-          :mnesia.delete_schema([Node.self()])
+            # Delete any local schema
+            :mnesia.delete_schema([Node.self()])
 
-          # Set master nodes
-          :mnesia.set_master_nodes(name, db_nodes)
+            # Set master nodes
+            :mnesia.set_master_nodes(name, db_nodes)
+        end
+
+        # Start mnesia
+        :mnesia.start()
+
+        # Add other running DB nodes
+        {:ok, _} = :mnesia.change_config(:extra_db_nodes, db_nodes)
+
+        # Change schema type
+        :mnesia.change_table_copy_type(:schema, Node.self(), :ram_copies)
+
+        # Add existing table copy if it exists
+        :mnesia.add_table_copy(name, Node.self(), :ram_copies)
+      else
+        # Start mnesia
+        Application.start(:mnesia)
+
+        # Change schema type
+        :mnesia.change_table_copy_type(:schema, Node.self(), :ram_copies)
       end
 
-      # Start mnesia
-      :mnesia.start()
+      unless Enum.member?(:mnesia.system_info(:tables), name) do
+        create_tables(name)
+      end
 
-      # Add other running DB nodes
-      {:ok, _} = :mnesia.change_config(:extra_db_nodes, db_nodes)
+      :mnesia.subscribe({:table, name, :detailed})
+      :mnesia.subscribe(:system)
 
-      # Change schema type
-      :mnesia.change_table_copy_type(:schema, Node.self(), :ram_copies)
-
-      # Add existing table copy if it exists
-      :mnesia.add_table_copy(name, Node.self(), :ram_copies)
-    else
-      # Start mnesia
-      Application.start(:mnesia)
-
-      # Change schema type
-      :mnesia.change_table_copy_type(:schema, Node.self(), :ram_copies)
-    end
-
-    unless Enum.member?(:mnesia.system_info(:tables), name) do
-      create_tables(name)
-    end
-
-    :mnesia.subscribe({:table, name, :detailed})
-    :mnesia.subscribe(:system)
-
-    # Wait up to 10s for tables
-    :ok = :mnesia.wait_for_tables([name], 60_000)
+      # Wait up to 10s for tables
+      :ok = :mnesia.wait_for_tables([name], 60_000)
+    end)
 
     # Notify initializer to begin
     send(initializer_name, :initialize)
