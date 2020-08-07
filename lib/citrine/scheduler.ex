@@ -39,7 +39,8 @@ defmodule Citrine.Scheduler do
 
   Additionally, it's recommended that you provide an `init_task` to perform
   initialization at startup. You should also specify a sufficient
-  `init_task_delay` to allow everything to settle before running the init task.
+  `init_task_delay` to allow everything to settle before running the init
+  task. The init task will be ran after mnesia has initialized.
 
   For example, you could specify the following in `config.exs`:
 
@@ -89,12 +90,25 @@ defmodule Citrine.Scheduler do
 
         children = [
           %{
+            id: initializer_name(),
+            start:
+              {Citrine.Initializer, :start_link,
+               [
+                 [
+                   name: initializer_name(),
+                   init_task: init_task,
+                   init_task_delay: init_task_delay
+                 ]
+               ]}
+          },
+          %{
             id: registry_name(),
             start:
               {Citrine.Registry, :start_link,
                [
                  [
-                   name: registry_name()
+                   name: registry_name(),
+                   initializer_name: initializer_name()
                  ]
                ]}
           },
@@ -107,47 +121,7 @@ defmodule Citrine.Scheduler do
             start:
               {Citrine.Monitor, :start_link,
                [[supervisor_name: supervisor_name(), registry_name: registry_name()]]}
-          },
-          {Task,
-           fn ->
-             if init_task do
-               if init_task_delay > 0 do
-                 Logger.debug(fn ->
-                   "waiting #{init_task_delay / 1_000}s before running init task"
-                 end)
-
-                 Process.sleep(init_task_delay)
-               end
-
-               try do
-                 Logger.debug(fn -> "starting init task" end)
-
-                 case init_task do
-                   {mod, fun, args} ->
-                     :erlang.apply(mod, fun, args)
-
-                   {fun, args} ->
-                     :erlang.apply(fun, args)
-
-                   fun when is_function(fun) ->
-                     fun.()
-
-                   _ ->
-                     Logger.warn(fn ->
-                       "unexpect value for init_task, skipping (got init_task=#{
-                         inspect(init_task)
-                       }"
-                     end)
-                 end
-
-                 Logger.debug(fn -> "finished init task" end)
-               rescue
-                 err ->
-                   Logger.error(fn -> "error during initialization" end)
-                   Logger.error(fn -> Exception.format(:error, err, __STACKTRACE__) end)
-               end
-             end
-           end}
+          }
         ]
 
         Supervisor.start_link(children, opts)
@@ -163,6 +137,10 @@ defmodule Citrine.Scheduler do
 
       defp supervisor_name() do
         String.to_atom("#{__MODULE__}.Supervisor")
+      end
+
+      defp initializer_name() do
+        String.to_atom("#{__MODULE__}.Initializer")
       end
 
       def put_job(%Citrine.Job{} = job) do

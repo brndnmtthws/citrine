@@ -14,7 +14,11 @@ defmodule Citrine.RegistryTest do
   setup do
     registry_name = String.to_atom("#{__MODULE__}.#{gen_id()}")
 
-    registry = start_supervised!({Registry, [name: registry_name]})
+    initializer = start_supervised!({Citrine.Initializer, [name: :initializer]})
+
+    registry =
+      start_supervised!({Registry, [name: registry_name, initializer_name: :initializer]})
+
     %{registry: registry, registry_name: registry_name}
   end
 

@@ -73,7 +73,6 @@ defmodule Citrine.JobExecutor do
       start: {__MODULE__, :start_link, [registry, job]},
       # Allow for up to 60 seconds to shut down
       shutdown: 60_000,
-      # Restart always
       restart: :transient,
       type: :worker
     }

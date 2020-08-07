@@ -8,7 +8,9 @@ defmodule Citrine.Registry do
     Logger.debug(fn -> "starting #{inspect(__MODULE__)} with opts=#{inspect(opts)}" end)
 
     name = Keyword.get(opts, :name)
-    :ok = init_mnesia(name)
+    initializer_name = Keyword.get(opts, :initializer_name)
+
+    :ok = init_mnesia(name, initializer_name)
 
     {:ok, opts}
   end
@@ -83,9 +85,9 @@ defmodule Citrine.Registry do
     Enum.member?(island_a, oldest_node)
   end
 
-  defp init_mnesia(name) do
-    # Wait up to 1000 millis before trying to initialize to prevent every node initializing simultaneously
-    Process.sleep(:rand.uniform(1000))
+  defp init_mnesia(name, initializer_name) do
+    # Wait up to 500 millis before trying to initialize to prevent every node initializing simultaneously
+    Process.sleep(:rand.uniform(500))
 
     db_nodes =
       Node.list()
@@ -135,7 +137,12 @@ defmodule Citrine.Registry do
     :mnesia.subscribe(:system)
 
     # Wait up to 10s for tables
-    :mnesia.wait_for_tables([name], 60_000)
+    :ok = :mnesia.wait_for_tables([name], 60_000)
+
+    # Notify initializer to begin
+    send(initializer_name, :initialize)
+
+    :ok
   end
 
   @impl true
