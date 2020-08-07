@@ -111,8 +111,8 @@ defmodule Citrine.Registry do
       # Start mnesia
       :mnesia.start()
 
-      # Add running DB nodes
-      {:ok, _} = :mnesia.change_config(:extra_db_nodes, [List.first(db_nodes)])
+      # Add other running DB nodes
+      {:ok, _} = :mnesia.change_config(:extra_db_nodes, db_nodes)
 
       # Change schema type
       :mnesia.change_table_copy_type(:schema, Node.self(), :ram_copies)
