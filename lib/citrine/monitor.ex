@@ -21,7 +21,7 @@ defmodule Citrine.Monitor do
       Citrine.Registry.unregister_name(registry_name, job.id)
     end
 
-    Logger.debug("orphaned citrine jobs on node=#{inspect(node)}: #{inspect(jobs)}")
+    Logger.debug(fn -> "orphaned citrine jobs on node=#{inspect(node)}: #{inspect(jobs)}" end)
 
     # get a list of nodes that are probably alive
     alive_nodes =
@@ -41,7 +41,9 @@ defmodule Citrine.Monitor do
 
       new_node = Enum.at(alive_nodes, idx)
 
-      Logger.debug("restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(new_node)}")
+      Logger.debug(fn ->
+        "restarting orphaned citrine job=#{inspect(job.id)} on #{inspect(new_node)}"
+      end)
 
       :rpc.call(new_node, Citrine.Supervisor, :start_child, [
         supervisor_name,

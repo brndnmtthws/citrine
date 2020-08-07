@@ -51,11 +51,11 @@ defmodule Citrine.Registry do
       :ok = :rpc.block_call(node, :mnesia, :start, [])
       :ok = :rpc.call(node, :mnesia, :wait_for_tables, [[name], :timer.seconds(15)])
 
-      Logger.debug(
+      Logger.debug(fn ->
         "[#{inspect(__MODULE__)}] #{inspect(node)} has been healed and joined #{
           inspect(master_nodes)
         }"
-      )
+      end)
     end
 
     :ok
@@ -155,12 +155,14 @@ defmodule Citrine.Registry do
       ) do
     this_node = Node.self()
 
-    Logger.debug(":delete event on node=#{inspect(this_node)} old_jobs=#{inspect(old_jobs)}")
+    Logger.debug(fn ->
+      ":delete event on node=#{inspect(this_node)} old_jobs=#{inspect(old_jobs)}"
+    end)
 
     case old_jobs do
       [{_name, _job_id, %Citrine.Job{} = _job, pid, ^this_node}] ->
         if Process.alive?(pid) do
-          Logger.debug("terminating pid=#{inspect(pid)}")
+          Logger.debug(fn -> "terminating pid=#{inspect(pid)}" end)
           Process.send(pid, :terminate, [])
         end
 
@@ -175,18 +177,18 @@ defmodule Citrine.Registry do
   def handle_info({:mnesia_table_event, {:write, _name, new_job, old_jobs, _activity_id}}, state) do
     this_node = Node.self()
 
-    Logger.debug(
+    Logger.debug(fn ->
       ":write event on node=#{inspect(this_node)} new_job=#{inspect(new_job)} old_jobs=#{
         inspect(old_jobs)
       }"
-    )
+    end)
 
     case old_jobs do
       [{_name, _job_id, %Citrine.Job{} = _job, old_pid, ^this_node}] ->
         case new_job do
           {_name, _job_id, %Citrine.Job{} = _job, new_pid, _new_node} ->
             if old_pid != new_pid and Process.alive?(old_pid) do
-              Logger.debug("terminating old_pid=#{inspect(old_pid)}")
+              Logger.debug(fn -> "terminating old_pid=#{inspect(old_pid)}" end)
               Process.send(old_pid, :terminate, [])
             end
 
@@ -207,7 +209,7 @@ defmodule Citrine.Registry do
   end
 
   def register_job(registry_name, job = %Citrine.Job{}) do
-    Logger.debug("registering job #{inspect(job)}")
+    Logger.debug(fn -> "registering job #{inspect(job)}" end)
 
     case :mnesia.sync_transaction(fn ->
            record =
@@ -220,7 +222,7 @@ defmodule Citrine.Registry do
                  {registry_name, job.id, job, nil, nil}
              end
 
-           Logger.debug("register_job writing record=#{inspect(record)}")
+           Logger.debug(fn -> "register_job writing record=#{inspect(record)}" end)
            :mnesia.write(record)
          end) do
       {:atomic, :ok} -> :ok
@@ -229,7 +231,7 @@ defmodule Citrine.Registry do
   end
 
   def unregister_job(registry_name, job_id) do
-    Logger.debug("unregistering job_id=#{job_id}")
+    Logger.debug(fn -> "unregistering job_id=#{job_id}" end)
 
     case :mnesia.sync_transaction(fn ->
            :mnesia.delete({registry_name, job_id})
@@ -271,13 +273,13 @@ defmodule Citrine.Registry do
 
   @spec register_name({atom, atom}, any) :: :no | :yes
   def register_name({registry_name, job_id}, pid) do
-    Logger.debug("registering name job_id=#{inspect(job_id)} with pid=#{inspect(pid)}")
+    Logger.debug(fn -> "registering name job_id=#{inspect(job_id)} with pid=#{inspect(pid)}" end)
 
     case :mnesia.sync_transaction(fn ->
            case :mnesia.wread({registry_name, job_id}) do
              [{_table, _id, %Citrine.Job{} = job, nil, nil}] ->
                record = {registry_name, job_id, job, pid, node(pid)}
-               Logger.debug("register_name writing record=#{inspect(record)}")
+               Logger.debug(fn -> "register_name writing record=#{inspect(record)}" end)
                :mnesia.write(record)
                :yes
 
@@ -311,13 +313,13 @@ defmodule Citrine.Registry do
   def unregister_name(registry_name, job_id), do: unregister_name({registry_name, job_id})
 
   def unregister_name({registry_name, job_id}) do
-    Logger.debug("unregistering name #{job_id}")
+    Logger.debug(fn -> "unregistering name #{job_id}" end)
 
     :mnesia.sync_transaction(fn ->
       case :mnesia.wread({registry_name, job_id}) do
         [{_table, _id, %Citrine.Job{} = job, _pid, _node}] ->
           record = {registry_name, job_id, job, nil, nil}
-          Logger.debug("unregister_name writing record=#{inspect(record)}")
+          Logger.debug(fn -> "unregister_name writing record=#{inspect(record)}" end)
           :mnesia.write(record)
 
         _ ->

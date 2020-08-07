@@ -112,12 +112,15 @@ defmodule Citrine.Scheduler do
            fn ->
              if init_task do
                if init_task_delay > 0 do
-                 Logger.debug("waiting #{init_task_delay / 1_000}s before running init task")
+                 Logger.debug(fn ->
+                   "waiting #{init_task_delay / 1_000}s before running init task"
+                 end)
+
                  Process.sleep(init_task_delay)
                end
 
                try do
-                 Logger.debug("starting init task")
+                 Logger.debug(fn -> "starting init task" end)
 
                  case init_task do
                    {mod, fun, args} ->
@@ -137,14 +140,11 @@ defmodule Citrine.Scheduler do
                      end)
                  end
 
-                 Logger.debug("finished init task")
+                 Logger.debug(fn -> "finished init task" end)
                rescue
                  err ->
-                   Logger.error("error during initialization")
-                   Logger.error(Exception.format(:error, err, __STACKTRACE__))
-               catch
-                 :exit, {:timeout, _value} ->
-                   Logger.error("error during initialization: timeout waiting for quorum")
+                   Logger.error(fn -> "error during initialization" end)
+                   Logger.error(fn -> Exception.format(:error, err, __STACKTRACE__) end)
                end
              end
            end}

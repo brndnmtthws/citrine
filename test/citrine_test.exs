@@ -26,7 +26,7 @@ defmodule Citrine.JobTest do
   end
 
   defp read_tmp(tmp_path) do
-    Logger.debug("reading from #{tmp_path}")
+    Logger.debug(fn -> "reading from #{tmp_path}" end)
     {:ok, content} = File.read(tmp_path)
 
     case Integer.parse(content) do
@@ -49,7 +49,7 @@ defmodule Citrine.JobTest do
         fn ->
           count = read_tmp(tmp_path) + 1
 
-          Logger.debug("writing #{count} to #{tmp_path}")
+          Logger.debug(fn -> "writing #{count} to #{tmp_path}" end)
           :ok = File.write(tmp_path, Integer.to_string(count))
         end,
         [Node.self() | Node.list()]
