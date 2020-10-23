@@ -138,11 +138,6 @@ defmodule Citrine.JobExecutor do
   end
 
   @impl true
-  def handle_info({:EXIT, _pid, :normal}, state) do
-    {:stop, :normal, state}
-  end
-
-  @impl true
   def handle_info(
         :reschedule,
         %{
